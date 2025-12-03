@@ -2,7 +2,7 @@
   "name": "visual-regression-testing-with-playwright",
   "displayName": "Visual Regression Testing with Playwright",
   "description": "Automate Playwright visual regression testing with automatic main branch baseline comparison",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "HannahRedmond",
   "icon": "images/avatar.png",
    "galleryBanner": {
@@ -86,6 +86,11 @@
           "type": "string",
           "default": "@playwright/test",
           "description": "Import path for test and expect (e.g., '@playwright/test' or '../fixtures')"
+        },
+        "visualRegression.waitForSelector": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS selector to wait for (e.g., loading spinner selector to wait for disappearance)"
         },
         "visualRegression.autoRunOnSave": {
           "type": "boolean",

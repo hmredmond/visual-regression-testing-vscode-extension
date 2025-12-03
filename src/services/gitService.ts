@@ -33,6 +33,18 @@ export class GitService {
     console.log(`[Git] Checked out ${branch}`);
   }
 
+  async clearSnapshots(): Promise<void> {
+    try {
+      console.log('[Git] Clearing existing snapshots');
+      await execAsync('rm -rf tests/visual/*.spec.ts-snapshots', {
+        cwd: this.workspaceRoot
+      });
+      console.log('[Git] Snapshots cleared');
+    } catch (error) {
+      console.error('[Git] Failed to clear snapshots:', error);
+    }
+  }
+
   async saveSnapshotsToTemp(): Promise<string> {
     const tmpDir = `/tmp/visual-regression-baseline-${Date.now()}`;
     try {

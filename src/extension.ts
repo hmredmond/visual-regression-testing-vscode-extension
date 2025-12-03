@@ -48,15 +48,21 @@ export function activate(context: vscode.ExtensionContext) {
       async () => {
         const config = vscode.workspace.getConfiguration("visualRegression");
 
-        const urlPath = await vscode.window.showInputBox({
-          prompt: "Enter URL path to test (e.g., /dashboard)",
+        const urlInput = await vscode.window.showInputBox({
+          prompt: "Enter URL path(s) to test (comma-separated or one per line, e.g., /access-denied, /unauthorised)",
           value: "/",
-          placeHolder: "/path/to/page",
+          placeHolder: "/path1, /path2 or /path1\n/path2",
         });
 
-        if (!urlPath) {
+        if (!urlInput) {
           return;
         }
+
+        // Parse multiple URLs - support both comma-separated and newline-separated
+        const urlPaths = urlInput
+          .split(/[,\n]/)
+          .map(url => url.trim())
+          .filter(url => url.length > 0);
 
         if (!workspaceFolder) {
           vscode.window.showErrorMessage("No workspace folder open");
@@ -84,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
               cancellable: false,
             },
             async (progress) => {
-              await testRunner.runTest(urlPath, progress);
+              await testRunner.runTest(urlPaths, progress);
             },
           );
         } catch (error) {

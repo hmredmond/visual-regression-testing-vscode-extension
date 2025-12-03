@@ -107,7 +107,7 @@ export function middleware(request: NextRequest) {
 
 1. **Open Command Palette**: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
 2. **Type**: "Visual Regression: Run Test"
-3. **Enter URL path**: Type `/` (or any route like `/dashboard`)
+3. **Enter URL path**: Type `/` (or any route like `/unauthorised`)
 4. **Watch the progress**: You'll see notifications showing progress
 
 ### What Notifications to Expect
@@ -191,7 +191,7 @@ test('homepage', async ({ page }) => {
 });
 
 test('dashboard', async ({ page }) => {
-  await page.goto(process.env.TEST_URL + '/dashboard');
+  await page.goto(process.env.TEST_URL + '/access-denied');
   await page.waitForLoadState('networkidle');
   await expect(page).toHaveScreenshot('dashboard.png', { fullPage: true });
 });

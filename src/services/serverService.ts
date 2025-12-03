@@ -87,4 +87,15 @@ export class ServerService {
       }
     });
   }
+
+  async killPort(port: number): Promise<void> {
+    try {
+      console.log(`[Server] Killing any process on port ${port}`);
+      await execAsync(`lsof -ti:${port} | xargs kill -9 2>/dev/null || true`);
+      console.log(`[Server] Port ${port} cleared`);
+    } catch {
+      // Port already free or command failed - that's fine
+      console.log(`[Server] Port ${port} is free`);
+    }
+  }
 }

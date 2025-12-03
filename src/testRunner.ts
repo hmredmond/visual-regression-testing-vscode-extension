@@ -31,7 +31,7 @@ export class TestRunner {
   }
 
   async runTest(
-    urlPath: string,
+    urlPaths: string[],
     progress: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<void> {
     const mainBranch = this.config.get<string>('mainBranch', 'main');
@@ -44,6 +44,7 @@ export class TestRunner {
     this.outputChannel.show(true);
     this.log('🎨 Starting Visual Regression Test');
     this.log('='.repeat(60));
+    this.log(`Testing ${urlPaths.length} URL(s): ${urlPaths.join(', ')}`);
 
     // Validate prerequisites
     progress.report({ message: 'Validating setup...', increment: 5 });
@@ -60,6 +61,10 @@ export class TestRunner {
     const originalBranch = await this.gitService.getCurrentBranch();
     this.log(`Current branch: ${this.colorBranch(originalBranch, false)}`);
     
+    // Clear any existing snapshots before starting
+    this.log('🧹 Clearing existing snapshots...');
+    await this.gitService.clearSnapshots();
+    
     let tmpDir = '';
     try {
       // Switch to main branch
@@ -75,8 +80,11 @@ export class TestRunner {
       await this.wait(startupTime);
 
       progress.report({ message: 'Capturing baseline screenshots...', increment: 20 });
-      this.log('📸 Capturing baseline screenshots from main branch...');
-      await this.playwrightService.updateSnapshots(urlPath, serverPort);
+      this.log(`📸 Capturing baseline screenshots from main branch for ${urlPaths.length} URL(s)...`);
+      for (const urlPath of urlPaths) {
+        this.log(`  - ${urlPath}`);
+      }
+      await this.playwrightService.updateAllSnapshots(urlPaths, serverPort);
 
       // Copy the baseline snapshots to temp directory
       progress.report({ message: 'Saving baseline snapshots...', increment: 5 });
@@ -104,18 +112,29 @@ export class TestRunner {
       await this.wait(startupTime);
 
       progress.report({ message: 'Running visual regression tests...', increment: 20 });
-      this.log('🧪 Running visual regression tests against baseline...');
-      const result = await this.playwrightService.runTests(urlPath, serverPort);
+      this.log(`🧪 Running visual regression tests against baseline for ${urlPaths.length} URL(s)...`);
+
+      // Run all tests together so the report includes all URLs
+      const result = await this.playwrightService.runAllTests(urlPaths, serverPort);
 
       // Stop server
       await this.serverService.stop();
 
       // Show results
       if (result.success) {
-        vscode.window.showInformationMessage('✅ Visual regression tests passed!');
+        vscode.window.showInformationMessage(
+          `✅ Visual regression tests passed for all ${urlPaths.length} URL(s)!`
+        );
       } else {
+        this.log('');
+        this.log('📊 Test Results: Differences detected');
+        this.log(`  Tested ${urlPaths.length} URL(s)`);
+        for (const url of urlPaths) {
+          this.log(`     - ${url}`);
+        }
+
         const action = await vscode.window.showWarningMessage(
-          '⚠️ Visual regression tests failed - differences detected!',
+          `⚠️ Visual regression tests failed - differences detected!`,
           'Show Report',
           'Dismiss'
         );
@@ -126,7 +145,9 @@ export class TestRunner {
 
     } catch (error) {
       // Ensure we're back on original branch and server is stopped
+      this.log('❌ Test failed - cleaning up...');
       await this.serverService.stop();
+      await this.serverService.killPort(serverPort);
       try {
         await this.gitService.checkout(originalBranch);
       } catch (checkoutError) {
@@ -166,21 +187,34 @@ export class TestRunner {
       throw new Error(message);
     }
 
-    // Check if test file exists
+    // Check if test file/directory exists
     this.log(`✓ Checking for test file: ${testPath}...`);
     const testFile = path.join(workspaceRoot, testPath);
-    if (!fs.existsSync(testFile)) {
-      const message = `Test file not found: ${testPath}\nPlease create the test file.`;
-      this.log(`✗ ${message}`);
-      throw new Error(message);
+    
+    // Check if it's a directory or file
+    let isDirectory = false;
+    let testFileExists = false;
+    
+    if (fs.existsSync(testFile)) {
+      const stats = fs.statSync(testFile);
+      isDirectory = stats.isDirectory();
+      testFileExists = true;
+    } else {
+      // Check if path ends with a file extension
+      isDirectory = !testPath.endsWith('.ts') && !testPath.endsWith('.js');
     }
-    this.log(`✓ Test file exists: ${testPath}`);
 
-    // Check if there are test files (skip if testPath is a file, not directory)
-    const stats = fs.statSync(testFile);
-    if (stats.isDirectory()) {
+    if (isDirectory) {
+      // Ensure directory exists
+      if (!testFileExists) {
+        this.log(`📁 Creating directory: ${testPath}`);
+        fs.mkdirSync(testFile, { recursive: true });
+      }
+      
+      // Check for test files
       const files = fs.readdirSync(testFile);
       const testFiles = files.filter((f: string) => f.endsWith('.spec.ts') || f.endsWith('.spec.js'));
+      
       if (testFiles.length === 0) {
         this.log(`⚠️  No test files found in ${testPath}`);
         
@@ -199,6 +233,31 @@ export class TestRunner {
         }
       } else {
         this.log(`✓ Found ${testFiles.length} test file(s)`);
+      }
+    } else if (testFileExists) {
+      this.log(`✓ Test file exists: ${testPath}`);
+    } else {
+      // File doesn't exist - create it
+      this.log(`⚠️  Test file not found: ${testPath}`);
+      
+      // Create parent directory if needed
+      const parentDir = path.dirname(testFile);
+      if (!fs.existsSync(parentDir)) {
+        this.log(`📁 Creating directory: ${path.dirname(testPath)}`);
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      
+      const action = await vscode.window.showWarningMessage(
+        `Test file not found: ${testPath}. Would you like to create a template test file?`,
+        'Create Template',
+        'Cancel'
+      );
+      
+      if (action === 'Create Template') {
+        await this.createTemplateTestFile(parentDir, path.dirname(testPath));
+        this.log(`✓ Created template test file at ${testPath}`);
+      } else {
+        throw new Error('Test file not found. Please create the test file to continue.');
       }
     }
 
@@ -221,24 +280,50 @@ export class TestRunner {
   private async createTemplateTestFile(testDir: string, testPath: string): Promise<void> {
     const fs = require('node:fs');
     const path = require('node:path');
-    
+
     const importPath = this.config.get<string>('testImportPath', '@playwright/test');
-    
+    const waitForSelector = this.config.get<string>('waitForSelector', '');
+
+    // Generate the wait logic based on whether a selector is configured
+    const waitLogic = waitForSelector
+      ? `
+  // Wait for loading indicator to disappear (if configured)
+  await page.waitForFunction(() => {
+    const noLoading = !document.querySelector("${waitForSelector}");
+    return document.readyState === 'complete' && noLoading;
+  });`
+      : `
+  // Wait for the page to be fully loaded
+  await page.waitForLoadState('networkidle');`;
+
     const templateContent = `import { test, expect } from '${importPath}';
 
 // Authentication bypass is handled via environment variables
 // Example: NEXT_PUBLIC_PLAYWRIGHT=true to bypass Auth0
 // Configure in VS Code settings: visualRegression.environmentVariables
 
-test('visual test', async ({ page }) => {
-  const testUrl = process.env.TEST_URL || 'http://localhost:3000/';
-  await page.goto(testUrl);
-  
-  // Wait for the page to be fully loaded
-  await page.waitForLoadState('networkidle');
-  
-  await expect(page).toHaveScreenshot('page.png', { fullPage: true });
-});
+// Get URLs from environment variable (comma-separated for multiple URLs)
+const testUrls = process.env.TEST_URLS 
+  ? process.env.TEST_URLS.split(',')
+  : [process.env.TEST_URL || 'http://localhost:3000/'];
+
+// Generate a test for each URL
+for (const testUrl of testUrls) {
+  test(\`visual test for \${testUrl}\`, async ({ page }) => {
+    await page.goto(testUrl);
+${waitLogic}
+
+    // Generate unique filename from URL path
+    const urlPath = new URL(testUrl).pathname;
+    const filename = urlPath
+      .replace(/^\\//, '') // Remove leading slash
+      .replace(/\\//g, '-') // Replace slashes with hyphens
+      .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace special chars with underscores
+      || 'homepage'; // Default name for root path
+
+    await expect(page).toHaveScreenshot(\`\${filename}.png\`, { fullPage: true });
+  });
+}
 `;
 
     const filePath = path.join(testDir, 'pages.spec.ts');

@@ -48,6 +48,43 @@ export class PlaywrightService {
     }
   }
 
+  async updateAllSnapshots(urlPaths: string[], port: number): Promise<void> {
+    const config = vscode.workspace.getConfiguration('visualRegression');
+    const testPath = config.get<string>('testPath', 'tests/visual/pages.spec.ts');
+    const customEnvVars = config.get<Record<string, string>>('environmentVariables', {});
+    
+    // Create TEST_URLS as comma-separated list
+    const testUrls = urlPaths.map(path => `http://localhost:${port}${path}`).join(',');
+    const cmd = `npx playwright test ${testPath} --update-snapshots`;
+    
+    console.log(`[Playwright] Running: ${cmd}`);
+    console.log(`[Playwright] TEST_URLS=${testUrls}`);
+    
+    // Log custom environment variables (except sensitive ones)
+    for (const key of Object.keys(customEnvVars)) {
+      console.log(`[Playwright] ${key}=${customEnvVars[key]}`);
+    }
+    
+    const env = { 
+      ...process.env, 
+      TEST_URLS: testUrls,
+      ...customEnvVars
+    };
+    
+    try {
+      await execAsync(cmd, {
+        cwd: this.workspaceRoot,
+        env
+      });
+      console.log('[Playwright] Baseline snapshots created for all URLs');
+    } catch (error: any) {
+      console.log('[Playwright] ❌ Command failed');
+      if (error.stdout) console.log('[Playwright stdout]', error.stdout);
+      if (error.stderr) console.log('[Playwright stderr]', error.stderr);
+      throw new Error(`Playwright test failed: ${error.message}\n${error.stderr || error.stdout || ''}`);
+    }
+  }
+
   async runTests(urlPath: string, port: number): Promise<TestResult> {
     const config = vscode.workspace.getConfiguration('visualRegression');
     const testPath = config.get<string>('testPath', 'tests/visual/pages.spec.ts');
@@ -83,6 +120,52 @@ export class PlaywrightService {
       };
     } catch (error: any) {
       console.log('[Playwright] Tests failed ❌');
+      console.log('[Playwright] HTML report generated at playwright-report/');
+      return {
+        success: false,
+        output: error.stdout + error.stderr
+      };
+    }
+  }
+
+  async runAllTests(urlPaths: string[], port: number): Promise<TestResult> {
+    const config = vscode.workspace.getConfiguration('visualRegression');
+    const testPath = config.get<string>('testPath', 'tests/visual/pages.spec.ts');
+    const customEnvVars = config.get<Record<string, string>>('environmentVariables', {});
+    
+    // Run all URLs in a single test execution so the report includes all results
+    const cmd = `npx playwright test ${testPath} --reporter=html`;
+    
+    console.log(`[Playwright] Running tests for ${urlPaths.length} URL(s): ${cmd}`);
+    
+    // Create TEST_URLS as comma-separated list for the test to parse
+    const testUrls = urlPaths.map(path => `http://localhost:${port}${path}`).join(',');
+    console.log(`[Playwright] TEST_URLS=${testUrls}`);
+    
+    // Log custom environment variables (except sensitive ones)
+    for (const key of Object.keys(customEnvVars)) {
+      console.log(`[Playwright] ${key}=${customEnvVars[key]}`);
+    }
+    
+    const env = { 
+      ...process.env, 
+      TEST_URLS: testUrls, // Multiple URLs
+      ...customEnvVars
+    };
+    
+    try {
+      const { stdout, stderr } = await execAsync(cmd, {
+        cwd: this.workspaceRoot,
+        env
+      });
+      
+      console.log('[Playwright] All tests passed ✅');
+      return {
+        success: true,
+        output: stdout + stderr
+      };
+    } catch (error: any) {
+      console.log('[Playwright] Some tests failed ❌');
       console.log('[Playwright] HTML report generated at playwright-report/');
       return {
         success: false,
