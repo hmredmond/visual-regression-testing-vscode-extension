@@ -19,6 +19,7 @@ export class TestRunner {
   private spinnerInterval: NodeJS.Timeout | null = null;
   private readonly spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private spinnerIndex = 0;
+  private readonly statusBarItem: vscode.StatusBarItem;
 
   constructor(
     private readonly gitService: GitService,
@@ -27,31 +28,13 @@ export class TestRunner {
     private readonly config: vscode.WorkspaceConfiguration
   ) {
     this.outputChannel = vscode.window.createOutputChannel('Visual Regression Test');
+    this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    this.statusBarItem.show();
   }
 
   private log(message: string): void {
     const timestamp = new Date().toLocaleTimeString();
     this.outputChannel.appendLine(`[${timestamp}] ${message}`);
-  }
-
-  private rebuildOutput(): void {
-    // Clear the output channel completely
-    this.outputChannel.clear();
-    
-    const timestamp = new Date().toLocaleTimeString();
-    this.outputChannel.appendLine('🎨 Visual Regression Test');
-    this.outputChannel.appendLine('='.repeat(60));
-    this.outputChannel.appendLine('');
-    
-    // Show all completed steps
-    for (const step of this.completedSteps) {
-      const status = step.success ? '✓' : '✗';
-      this.outputChannel.appendLine(`[${timestamp}] ${status} ${step.icon} ${step.message}`);
-    }
-    
-    if (this.completedSteps.length > 0) {
-      this.outputChannel.appendLine('');
-    }
   }
 
   private startSpinner(icon: string, message: string): void {
@@ -62,14 +45,18 @@ export class TestRunner {
     this.spinnerIndex = 0;
     const timestamp = new Date().toLocaleTimeString();
     
-    // Update the display every 100ms
     this.spinnerInterval = setInterval(() => {
-      this.rebuildOutput();
+      this.outputChannel.clear();
       const frame = this.spinnerFrames[this.spinnerIndex];
+      this.outputChannel.appendLine('🎨 Visual Regression Testing in progress...');
+      this.outputChannel.appendLine('');
       this.outputChannel.appendLine(`[${timestamp}] ${frame} ${icon} ${message}`);
       
+      // Update status bar
+      this.statusBarItem.text = `$(sync~spin) ${icon} ${message}`;
+      
       this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
-    }, 100);
+    }, 80);
   }
 
   private stopSpinner(icon: string, message: string, success: boolean = true): void {
@@ -81,23 +68,11 @@ export class TestRunner {
     // Record the completed step
     this.completedSteps.push({ icon, message, success });
     
-    // Rebuild output to show the completed step
-    this.rebuildOutput();
+    // Clear status bar
+    this.statusBarItem.text = '';
   }
 
-  private showSummary(): void {
-    this.outputChannel.appendLine('');
-    this.outputChannel.appendLine('='.repeat(60));
-    this.outputChannel.appendLine('📋 Test Summary');
-    this.outputChannel.appendLine('='.repeat(60));
-    
-    for (const step of this.completedSteps) {
-      const status = step.success ? '✓' : '✗';
-      this.outputChannel.appendLine(`${status} ${step.icon} ${step.message}`);
-    }
-    
-    this.outputChannel.appendLine('='.repeat(60));
-  }
+
 
   private showFinalSummary(): void {
     this.outputChannel.clear();
@@ -106,6 +81,8 @@ export class TestRunner {
     this.outputChannel.appendLine('='.repeat(60));
     this.outputChannel.appendLine('');
     
+    const hasFailures = this.completedSteps.some(step => !step.success);
+    
     for (const step of this.completedSteps) {
       const status = step.success ? '✓' : '✗';
       this.outputChannel.appendLine(`[${timestamp}] ${status} ${step.icon} ${step.message}`);
@@ -113,12 +90,19 @@ export class TestRunner {
     
     this.outputChannel.appendLine('');
     this.outputChannel.appendLine('='.repeat(60));
+    
+    if (hasFailures) {
+      this.outputChannel.appendLine('❌ Test run completed with failures');
+    } else {
+      this.outputChannel.appendLine('✅ All steps completed successfully');
+    }
   }
 
   dispose(): void {
     if (this.spinnerInterval) {
       clearInterval(this.spinnerInterval);
     }
+    this.statusBarItem.dispose();
   }
 
   private colorBranch(branchName: string, isMainBranch: boolean): string {

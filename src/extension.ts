@@ -99,6 +99,8 @@ export function activate(context: vscode.ExtensionContext) {
           vscode.window.showErrorMessage(
             `Visual regression test failed: ${errorMsg}`,
           );
+        } finally {
+          testRunner.dispose();
         }
       },
     ),
