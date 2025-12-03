@@ -15,10 +15,10 @@ interface StepResult {
 
 export class TestRunner {
   private readonly outputChannel: vscode.OutputChannel;
+  private readonly completedSteps: StepResult[] = [];
   private spinnerInterval: NodeJS.Timeout | null = null;
   private readonly spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private spinnerIndex = 0;
-  private readonly completedSteps: StepResult[] = [];
 
   constructor(
     private readonly gitService: GitService,
@@ -34,19 +34,42 @@ export class TestRunner {
     this.outputChannel.appendLine(`[${timestamp}] ${message}`);
   }
 
+  private rebuildOutput(): void {
+    // Clear the output channel completely
+    this.outputChannel.clear();
+    
+    const timestamp = new Date().toLocaleTimeString();
+    this.outputChannel.appendLine('🎨 Visual Regression Test');
+    this.outputChannel.appendLine('='.repeat(60));
+    this.outputChannel.appendLine('');
+    
+    // Show all completed steps
+    for (const step of this.completedSteps) {
+      const status = step.success ? '✓' : '✗';
+      this.outputChannel.appendLine(`[${timestamp}] ${status} ${step.icon} ${step.message}`);
+    }
+    
+    if (this.completedSteps.length > 0) {
+      this.outputChannel.appendLine('');
+    }
+  }
+
   private startSpinner(icon: string, message: string): void {
     if (this.spinnerInterval) {
       clearInterval(this.spinnerInterval);
     }
+    
     this.spinnerIndex = 0;
     const timestamp = new Date().toLocaleTimeString();
     
-    // Just show all spinner frames on new lines for visibility
+    // Update the display every 100ms
     this.spinnerInterval = setInterval(() => {
-      const line = `[${timestamp}] ${this.spinnerFrames[this.spinnerIndex]} ${icon} ${message}`;
-      this.outputChannel.appendLine(line);
+      this.rebuildOutput();
+      const frame = this.spinnerFrames[this.spinnerIndex];
+      this.outputChannel.appendLine(`[${timestamp}] ${frame} ${icon} ${message}`);
+      
       this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
-    }, 150);
+    }, 100);
   }
 
   private stopSpinner(icon: string, message: string, success: boolean = true): void {
@@ -57,6 +80,9 @@ export class TestRunner {
     
     // Record the completed step
     this.completedSteps.push({ icon, message, success });
+    
+    // Rebuild output to show the completed step
+    this.rebuildOutput();
   }
 
   private showSummary(): void {
@@ -70,6 +96,22 @@ export class TestRunner {
       this.outputChannel.appendLine(`${status} ${step.icon} ${step.message}`);
     }
     
+    this.outputChannel.appendLine('='.repeat(60));
+  }
+
+  private showFinalSummary(): void {
+    this.outputChannel.clear();
+    const timestamp = new Date().toLocaleTimeString();
+    this.outputChannel.appendLine('🎨 Visual Regression Test - Complete');
+    this.outputChannel.appendLine('='.repeat(60));
+    this.outputChannel.appendLine('');
+    
+    for (const step of this.completedSteps) {
+      const status = step.success ? '✓' : '✗';
+      this.outputChannel.appendLine(`[${timestamp}] ${status} ${step.icon} ${step.message}`);
+    }
+    
+    this.outputChannel.appendLine('');
     this.outputChannel.appendLine('='.repeat(60));
   }
 
@@ -96,10 +138,6 @@ export class TestRunner {
 
     // Show output channel
     this.outputChannel.show(true);
-    this.log('🎨 Starting Visual Regression Test');
-    this.log('='.repeat(60));
-    this.log(`Testing ${urlPaths.length} URL(s): ${urlPaths.join(', ')}`);
-    this.log('');
 
     // Validate prerequisites
     progress.report({ message: 'Validating setup...', increment: 5 });
@@ -110,7 +148,7 @@ export class TestRunner {
       this.stopSpinner('🔍', 'Validating setup', true);
     } catch (error) {
       this.stopSpinner('🔍', 'Validating setup', false);
-      this.showSummary();
+      this.showFinalSummary();
       this.log(`❌ ${error}`);
       throw error;
     }
@@ -147,9 +185,6 @@ export class TestRunner {
       this.stopSpinner('🚀', `Starting dev server on port ${serverPort}`, true);
 
       progress.report({ message: 'Capturing baseline screenshots...', increment: 20 });
-      for (const urlPath of urlPaths) {
-        this.log(`  - ${urlPath}`);
-      }
       this.startSpinner('📸', `Capturing baseline screenshots for ${urlPaths.length} URL(s)`);
       await this.playwrightService.updateAllSnapshots(urlPaths, serverPort);
       this.stopSpinner('📸', `Capturing baseline screenshots for ${urlPaths.length} URL(s)`, true);
@@ -193,8 +228,8 @@ export class TestRunner {
       await this.serverService.stop();
       this.stopSpinner('🛑', 'Stopping server', true);
 
-      // Show summary
-      this.showSummary();
+      // Show final summary
+      this.showFinalSummary();
 
       // Show results
       if (result.success) {
@@ -223,7 +258,7 @@ export class TestRunner {
 
     } catch (error) {
       // Show summary of steps completed before failure
-      this.showSummary();
+      this.showFinalSummary();
       
       // Ensure we're back on original branch and server is stopped
       this.log('');
