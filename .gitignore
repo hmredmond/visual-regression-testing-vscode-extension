@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.vsix
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temp
+.tmp/
+temp/
+
+# Example project
+example-project/node_modules/
+example-project/playwright-report/
+example-project/test-results/
+example-project/.playwright/

@@ -1,0 +1,151 @@
+{
+  "name": "visual-regression-testing-with-playwright",
+  "displayName": "Visual Regression Testing with Playwright",
+  "description": "Automate Playwright visual regression testing with automatic main branch baseline comparison",
+  "version": "1.0.0",
+  "publisher": "HannahRedmond",
+  "icon": "images/avatar.png",
+   "galleryBanner": {
+    "color": "#000000",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hmredmond/visual-regression-testing-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/hmredmond/visual-regression-testing-extension/issues"
+  },
+  "homepage": "https://github.com/hmredmond/visual-regression-testing-extension#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Testing"
+  ],
+  "keywords": [
+    "playwright",
+    "visual regression",
+    "testing",
+    "screenshots",
+    "visual testing",
+    "regression testing",
+    "ui testing",
+    "snapshot testing"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "visualRegression.runTest",
+        "title": "Run Test",
+        "category": "Visual Regression",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "visualRegression.showReport",
+        "title": "Show Playwright Report",
+        "category": "Visual Regression",
+        "icon": "$(graph)"
+      }
+    ],
+    "configuration": {
+      "title": "Visual Regression Testing",
+      "properties": {
+        "visualRegression.mainBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "Main branch name to use as baseline"
+        },
+        "visualRegression.serverStartCommand": {
+          "type": "string",
+          "default": "npm run dev",
+          "description": "Command to start the dev server"
+        },
+        "visualRegression.serverPort": {
+          "type": "number",
+          "default": 3000,
+          "description": "Port where dev server runs"
+        },
+        "visualRegression.serverStartupTime": {
+          "type": "number",
+          "default": 5000,
+          "description": "Time to wait for server startup (ms)"
+        },
+        "visualRegression.testPath": {
+          "type": "string",
+          "default": "tests/visual",
+          "description": "Path to Playwright test files"
+        },
+        "visualRegression.environmentVariables": {
+          "type": "object",
+          "default": {},
+          "description": "Environment variables to pass to Playwright tests (e.g., NEXT_PUBLIC_PLAYWRIGHT=true)"
+        },
+        "visualRegression.testImportPath": {
+          "type": "string",
+          "default": "@playwright/test",
+          "description": "Import path for test and expect (e.g., '@playwright/test' or '../fixtures')"
+        },
+        "visualRegression.autoRunOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically run tests when files are saved"
+        },
+        "visualRegression.autoRunDelay": {
+          "type": "number",
+          "default": 2000,
+          "description": "Delay in milliseconds before auto-running tests after save"
+        },
+        "visualRegression.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show visual regression status in status bar"
+        },
+        "visualRegression.notifyOnCompletion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification when tests complete"
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "visualRegression.runTest"
+        },
+        {
+          "command": "visualRegression.runWorkflow"
+        },
+        {
+          "command": "visualRegression.runChangedPages"
+        },
+        {
+          "command": "visualRegression.runSinglePage"
+        },
+        {
+          "command": "visualRegression.updateBaselines"
+        },
+        {
+          "command": "visualRegression.showReport"
+        },
+        {
+          "command": "visualRegression.cleanSnapshots"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "install-extension": "code --install-extension visual-regression-testing-0.1.0.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
