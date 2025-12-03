@@ -87,6 +87,11 @@
           "default": "@playwright/test",
           "description": "Import path for test and expect (e.g., '@playwright/test' or '../fixtures')"
         },
+        "visualRegression.waitForSelector": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS selector to wait for (e.g., loading spinner selector to wait for disappearance)"
+        },
         "visualRegression.autoRunOnSave": {
           "type": "boolean",
           "default": false,

@@ -31,7 +31,7 @@ export class TestRunner {
   }
 
   async runTest(
-    urlPath: string,
+    urlPaths: string[],
     progress: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<void> {
     const mainBranch = this.config.get<string>('mainBranch', 'main');
@@ -44,6 +44,7 @@ export class TestRunner {
     this.outputChannel.show(true);
     this.log('🎨 Starting Visual Regression Test');
     this.log('='.repeat(60));
+    this.log(`Testing ${urlPaths.length} URL(s): ${urlPaths.join(', ')}`);
 
     // Validate prerequisites
     progress.report({ message: 'Validating setup...', increment: 5 });
@@ -75,8 +76,12 @@ export class TestRunner {
       await this.wait(startupTime);
 
       progress.report({ message: 'Capturing baseline screenshots...', increment: 20 });
-      this.log('📸 Capturing baseline screenshots from main branch...');
-      await this.playwrightService.updateSnapshots(urlPath, serverPort);
+      this.log(`📸 Capturing baseline screenshots from main branch for ${urlPaths.length} URL(s)...`);
+      for (let i = 0; i < urlPaths.length; i++) {
+        const urlPath = urlPaths[i];
+        this.log(`  [${i + 1}/${urlPaths.length}] Capturing baseline for: ${urlPath}`);
+        await this.playwrightService.updateSnapshots(urlPath, serverPort);
+      }
 
       // Copy the baseline snapshots to temp directory
       progress.report({ message: 'Saving baseline snapshots...', increment: 5 });
@@ -104,18 +109,43 @@ export class TestRunner {
       await this.wait(startupTime);
 
       progress.report({ message: 'Running visual regression tests...', increment: 20 });
-      this.log('🧪 Running visual regression tests against baseline...');
-      const result = await this.playwrightService.runTests(urlPath, serverPort);
+      this.log(`🧪 Running visual regression tests against baseline for ${urlPaths.length} URL(s)...`);
+
+      let allTestsPassed = true;
+      const results: Array<{ url: string; success: boolean }> = [];
+
+      for (let i = 0; i < urlPaths.length; i++) {
+        const urlPath = urlPaths[i];
+        this.log(`  [${i + 1}/${urlPaths.length}] Testing: ${urlPath}`);
+        const result = await this.playwrightService.runTests(urlPath, serverPort);
+        results.push({ url: urlPath, success: result.success });
+        if (!result.success) {
+          allTestsPassed = false;
+        }
+      }
 
       // Stop server
       await this.serverService.stop();
 
       // Show results
-      if (result.success) {
-        vscode.window.showInformationMessage('✅ Visual regression tests passed!');
+      if (allTestsPassed) {
+        vscode.window.showInformationMessage(
+          `✅ Visual regression tests passed for all ${urlPaths.length} URL(s)!`
+        );
       } else {
+        // Show which URLs failed
+        const failedUrls = results.filter(r => !r.success).map(r => r.url);
+        const passedUrls = results.filter(r => r.success).map(r => r.url);
+
+        this.log('');
+        this.log('📊 Test Results Summary:');
+        this.log(`  ✅ Passed: ${passedUrls.length}`);
+        passedUrls.forEach(url => this.log(`     - ${url}`));
+        this.log(`  ❌ Failed: ${failedUrls.length}`);
+        failedUrls.forEach(url => this.log(`     - ${url}`));
+
         const action = await vscode.window.showWarningMessage(
-          '⚠️ Visual regression tests failed - differences detected!',
+          `⚠️ ${failedUrls.length}/${urlPaths.length} URL(s) failed - differences detected!`,
           'Show Report',
           'Dismiss'
         );
@@ -221,9 +251,22 @@ export class TestRunner {
   private async createTemplateTestFile(testDir: string, testPath: string): Promise<void> {
     const fs = require('node:fs');
     const path = require('node:path');
-    
+
     const importPath = this.config.get<string>('testImportPath', '@playwright/test');
-    
+    const waitForSelector = this.config.get<string>('waitForSelector', '');
+
+    // Generate the wait logic based on whether a selector is configured
+    const waitLogic = waitForSelector
+      ? `
+  // Wait for loading indicator to disappear (if configured)
+  await page.waitForFunction(() => {
+    const noLoading = !document.querySelector("${waitForSelector}");
+    return document.readyState === 'complete' && noLoading;
+  });`
+      : `
+  // Wait for the page to be fully loaded
+  await page.waitForLoadState('networkidle');`;
+
     const templateContent = `import { test, expect } from '${importPath}';
 
 // Authentication bypass is handled via environment variables
@@ -233,11 +276,17 @@ export class TestRunner {
 test('visual test', async ({ page }) => {
   const testUrl = process.env.TEST_URL || 'http://localhost:3000/';
   await page.goto(testUrl);
-  
-  // Wait for the page to be fully loaded
-  await page.waitForLoadState('networkidle');
-  
-  await expect(page).toHaveScreenshot('page.png', { fullPage: true });
+${waitLogic}
+
+  // Generate unique filename from URL path
+  const urlPath = new URL(testUrl).pathname;
+  const filename = urlPath
+    .replace(/^\\//, '') // Remove leading slash
+    .replace(/\\//g, '-') // Replace slashes with hyphens
+    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace special chars with underscores
+    || 'homepage'; // Default name for root path
+
+  await expect(page).toHaveScreenshot(\`\${filename}.png\`, { fullPage: true });
 });
 `;
 
