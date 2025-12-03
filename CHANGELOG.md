@@ -2,6 +2,18 @@
 
 All notable changes to the "Visual Regression Testing" extension will be documented in this file.
 
+## [1.1.0] - 2025-12-03
+
+### Added
+- Configurable Playwright import path via `visualRegression.testImportPath` setting
+- Ability to customize test and expect imports (e.g., use custom fixtures instead of @playwright/test)
+
+### Fixed
+- Bug fixes and stability improvements
+
+### Changed
+- Improved documentation
+
 ## [1.0.0] - 2024-12-02
 
 ### Added
