@@ -7,8 +7,18 @@ import { ServerService } from './services/serverService';
 
 const execAsync = promisify(exec);
 
+interface StepResult {
+  icon: string;
+  message: string;
+  success: boolean;
+}
+
 export class TestRunner {
   private readonly outputChannel: vscode.OutputChannel;
+  private spinnerInterval: NodeJS.Timeout | null = null;
+  private readonly spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private spinnerIndex = 0;
+  private readonly completedSteps: StepResult[] = [];
 
   constructor(
     private readonly gitService: GitService,
@@ -22,6 +32,51 @@ export class TestRunner {
   private log(message: string): void {
     const timestamp = new Date().toLocaleTimeString();
     this.outputChannel.appendLine(`[${timestamp}] ${message}`);
+  }
+
+  private startSpinner(icon: string, message: string): void {
+    if (this.spinnerInterval) {
+      clearInterval(this.spinnerInterval);
+    }
+    this.spinnerIndex = 0;
+    const timestamp = new Date().toLocaleTimeString();
+    
+    // Just show all spinner frames on new lines for visibility
+    this.spinnerInterval = setInterval(() => {
+      const line = `[${timestamp}] ${this.spinnerFrames[this.spinnerIndex]} ${icon} ${message}`;
+      this.outputChannel.appendLine(line);
+      this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
+    }, 150);
+  }
+
+  private stopSpinner(icon: string, message: string, success: boolean = true): void {
+    if (this.spinnerInterval) {
+      clearInterval(this.spinnerInterval);
+      this.spinnerInterval = null;
+    }
+    
+    // Record the completed step
+    this.completedSteps.push({ icon, message, success });
+  }
+
+  private showSummary(): void {
+    this.outputChannel.appendLine('');
+    this.outputChannel.appendLine('='.repeat(60));
+    this.outputChannel.appendLine('📋 Test Summary');
+    this.outputChannel.appendLine('='.repeat(60));
+    
+    for (const step of this.completedSteps) {
+      const status = step.success ? '✓' : '✗';
+      this.outputChannel.appendLine(`${status} ${step.icon} ${step.message}`);
+    }
+    
+    this.outputChannel.appendLine('='.repeat(60));
+  }
+
+  dispose(): void {
+    if (this.spinnerInterval) {
+      clearInterval(this.spinnerInterval);
+    }
   }
 
   private colorBranch(branchName: string, isMainBranch: boolean): string {
@@ -40,95 +95,111 @@ export class TestRunner {
     const testPath = this.config.get<string>('testPath', 'tests/visual');
 
     // Show output channel
-    this.outputChannel.clear();
     this.outputChannel.show(true);
     this.log('🎨 Starting Visual Regression Test');
     this.log('='.repeat(60));
     this.log(`Testing ${urlPaths.length} URL(s): ${urlPaths.join(', ')}`);
+    this.log('');
 
     // Validate prerequisites
     progress.report({ message: 'Validating setup...', increment: 5 });
     let templateCreated = false;
+    this.startSpinner('🔍', 'Validating setup');
     try {
       templateCreated = await this.validateSetup(testPath);
+      this.stopSpinner('🔍', 'Validating setup', true);
     } catch (error) {
-      this.log(`❌ Setup validation failed: ${error}`);
+      this.stopSpinner('🔍', 'Validating setup', false);
+      this.showSummary();
+      this.log(`❌ ${error}`);
       throw error;
     }
 
-    // If template was just created, stage it to avoid checkout issues
+    // If template was just created, don't stage it
     if (templateCreated) {
-      this.log('📝 Staging newly created test file...');
-      await this.gitService.stageFiles('tests/visual/');
+      this.log('ℹ️  New test file created (not staged)');
     }
 
     // Save current branch
     progress.report({ message: 'Checking current branch...', increment: 10 });
-    this.log('📍 Getting current branch...');
+    this.startSpinner('📍', 'Getting current branch');
     const originalBranch = await this.gitService.getCurrentBranch();
-    this.log(`Current branch: ${this.colorBranch(originalBranch, false)}`);
+    this.stopSpinner('📍', `Getting current branch: ${this.colorBranch(originalBranch, false)}`, true);
     
     // Clear any existing snapshots before starting
-    this.log('🧹 Clearing existing snapshots...');
+    this.startSpinner('🧹', 'Clearing existing snapshots');
     await this.gitService.clearSnapshots();
+    this.stopSpinner('🧹', 'Clearing existing snapshots', true);
     
     let tmpDir = '';
     try {
       // Switch to main branch
       progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
-      this.log(`🔄 Switching to ${this.colorBranch(mainBranch, true)} branch...`);
+      this.startSpinner('🔄', `Switching to ${this.colorBranch(mainBranch, true)} branch`);
       await this.gitService.checkout(mainBranch);
+      this.stopSpinner('🔄', `Switching to ${this.colorBranch(mainBranch, true)} branch`, true);
 
       // Start server and capture baseline
       progress.report({ message: 'Starting server on main branch...', increment: 10 });
-      this.log(`🚀 Starting dev server on port ${serverPort}...`);
+      this.startSpinner('🚀', `Starting dev server on port ${serverPort}`);
       await this.serverService.start();
-      this.log(`⏳ Waiting ${startupTime}ms for server startup...`);
       await this.wait(startupTime);
+      this.stopSpinner('🚀', `Starting dev server on port ${serverPort}`, true);
 
       progress.report({ message: 'Capturing baseline screenshots...', increment: 20 });
-      this.log(`📸 Capturing baseline screenshots from main branch for ${urlPaths.length} URL(s)...`);
       for (const urlPath of urlPaths) {
         this.log(`  - ${urlPath}`);
       }
+      this.startSpinner('📸', `Capturing baseline screenshots for ${urlPaths.length} URL(s)`);
       await this.playwrightService.updateAllSnapshots(urlPaths, serverPort);
+      this.stopSpinner('📸', `Capturing baseline screenshots for ${urlPaths.length} URL(s)`, true);
 
       // Copy the baseline snapshots to temp directory
       progress.report({ message: 'Saving baseline snapshots...', increment: 5 });
-      this.log('💾 Saving baseline snapshots to temp directory...');
+      this.startSpinner('💾', 'Saving baseline snapshots to temp directory');
       tmpDir = await this.gitService.saveSnapshotsToTemp();
+      this.stopSpinner('💾', 'Saving baseline snapshots to temp directory', true);
 
       // Stop server
-      this.log('🛑 Stopping server...');
+      this.startSpinner('🛑', 'Stopping server');
       await this.serverService.stop();
+      this.stopSpinner('🛑', 'Stopping server', true);
 
       // Switch back to original branch
       progress.report({ message: `Switching back to ${originalBranch}...`, increment: 10 });
-      this.log(`🔄 Switching back to ${this.colorBranch(originalBranch, false)}...`);
+      this.startSpinner('🔄', `Switching back to ${this.colorBranch(originalBranch, false)} branch`);
       await this.gitService.checkout(originalBranch);
+      this.stopSpinner('🔄', `Switching back to ${this.colorBranch(originalBranch, false)} branch`, true);
 
       // Restore baseline snapshots from temp (overwrite feature branch snapshots)
-      this.log('📦 Restoring baseline snapshots (from main) to compare against...');
+      this.startSpinner('📦', 'Restoring baseline snapshots (from main) to compare against');
       await this.gitService.restoreSnapshotsFromTemp(tmpDir);
+      this.stopSpinner('📦', 'Restoring baseline snapshots (from main) to compare against', true);
 
       // Start server and run comparison tests
       progress.report({ message: 'Starting server on feature branch...', increment: 10 });
-      this.log(`🚀 Starting dev server on ${this.colorBranch(originalBranch, false)}...`);
+      this.startSpinner('🚀', `Starting dev server on ${this.colorBranch(originalBranch, false)}`);
       await this.serverService.start();
-      this.log(`⏳ Waiting ${startupTime}ms for server startup...`);
       await this.wait(startupTime);
+      this.stopSpinner('🚀', `Starting dev server on ${this.colorBranch(originalBranch, false)}`, true);
 
       progress.report({ message: 'Running visual regression tests...', increment: 20 });
-      this.log(`🧪 Running visual regression tests against baseline for ${urlPaths.length} URL(s)...`);
-
-      // Run all tests together so the report includes all URLs
+      this.startSpinner('🧪', `Running visual regression tests for ${urlPaths.length} URL(s)`);
       const result = await this.playwrightService.runAllTests(urlPaths, serverPort);
+      this.stopSpinner('🧪', `Running visual regression tests for ${urlPaths.length} URL(s)`, true);
 
       // Stop server
+      this.startSpinner('🛑', 'Stopping server');
       await this.serverService.stop();
+      this.stopSpinner('🛑', 'Stopping server', true);
+
+      // Show summary
+      this.showSummary();
 
       // Show results
       if (result.success) {
+        this.log('');
+        this.log('✨ All tests passed!');
         vscode.window.showInformationMessage(
           `✅ Visual regression tests passed for all ${urlPaths.length} URL(s)!`
         );
@@ -151,7 +222,11 @@ export class TestRunner {
       }
 
     } catch (error) {
+      // Show summary of steps completed before failure
+      this.showSummary();
+      
       // Ensure we're back on original branch and server is stopped
+      this.log('');
       this.log('❌ Test failed - cleaning up...');
       await this.serverService.stop();
       await this.serverService.killPort(serverPort);
@@ -165,9 +240,11 @@ export class TestRunner {
     } finally {
       // Cleanup temp directory if it exists
       if (tmpDir) {
-        this.log('🧹 Cleaning up temp directory...');
+        this.startSpinner('🧹', 'Cleaning up temp directory');
         await this.gitService.cleanupTemp(tmpDir);
+        this.stopSpinner('🧹', 'Cleaning up temp directory', true);
       }
+      this.log('');
       this.log('✨ Test run complete');
     }
   }
