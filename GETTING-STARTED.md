@@ -214,4 +214,4 @@ This is expected if your changes don't affect visual appearance. The extension c
 
 - Check the [README.md](README.md) for detailed documentation
 - View logs in Output panel: **View → Output → Visual Regression Testing**
-- Report issues on [GitHub](https://github.com/hmredmond/visual-regression-testing-extension/issues)
+- Report issues on [GitHub](https://github.com/hmredmond/visual-regression-testing-vscode-extension/issues)
