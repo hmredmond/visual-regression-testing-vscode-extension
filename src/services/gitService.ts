@@ -82,4 +82,16 @@ export class GitService {
       console.error('[Git] Failed to cleanup temp:', error);
     }
   }
+
+  async stageFiles(path: string): Promise<void> {
+    try {
+      console.log(`[Git] Staging files: ${path}`);
+      await execAsync(`git add ${path}`, {
+        cwd: this.workspaceRoot
+      });
+      console.log('[Git] Files staged');
+    } catch (error) {
+      console.error('[Git] Failed to stage files:', error);
+    }
+  }
 }

@@ -48,11 +48,18 @@ export class TestRunner {
 
     // Validate prerequisites
     progress.report({ message: 'Validating setup...', increment: 5 });
+    let templateCreated = false;
     try {
-      await this.validateSetup(testPath);
+      templateCreated = await this.validateSetup(testPath);
     } catch (error) {
       this.log(`❌ Setup validation failed: ${error}`);
       throw error;
+    }
+
+    // If template was just created, stage it to avoid checkout issues
+    if (templateCreated) {
+      this.log('📝 Staging newly created test file...');
+      await this.gitService.stageFiles('tests/visual/');
     }
 
     // Save current branch
@@ -169,10 +176,11 @@ export class TestRunner {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  private async validateSetup(testPath: string): Promise<void> {
+  private async validateSetup(testPath: string): Promise<boolean> {
     const workspaceRoot = this.gitService['workspaceRoot'];
     const fs = require('node:fs');
     const path = require('node:path');
+    let templateCreated = false;
 
     // Check if Playwright is installed
     this.log('✓ Checking for Playwright installation...');
@@ -228,6 +236,7 @@ export class TestRunner {
         if (action === 'Create Template') {
           await this.createTemplateTestFile(testFile, testPath);
           this.log(`✓ Created template test file in ${testPath}`);
+          templateCreated = true;
         } else {
           throw new Error('No test files found. Please add test files to continue.');
         }
@@ -256,6 +265,7 @@ export class TestRunner {
       if (action === 'Create Template') {
         await this.createTemplateTestFile(parentDir, path.dirname(testPath));
         this.log(`✓ Created template test file at ${testPath}`);
+        templateCreated = true;
       } else {
         throw new Error('Test file not found. Please create the test file to continue.');
       }
@@ -275,6 +285,7 @@ export class TestRunner {
     }
 
     this.log('✅ All prerequisites validated');
+    return templateCreated;
   }
 
   private async createTemplateTestFile(testDir: string, testPath: string): Promise<void> {
