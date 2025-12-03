@@ -144,6 +144,12 @@ Stop your dev server before running tests, or change \`serverPort\` in settings.
 ### No visual differences detected
 Expected if your changes don't affect visual appearance.
 
+### Not seeing notifications
+VS Code notifications appear in the bottom right corner. If you missed them:
+1. Click the bell icon (🔔) in the bottom right status bar
+2. Or check **View → Notifications** to see recent notifications
+3. Alternatively, check the Output panel for detailed logs
+
 ### Disable Playwright Test UI
 1. Open Settings (\`Cmd+,\`)
 2. Search "Playwright"
