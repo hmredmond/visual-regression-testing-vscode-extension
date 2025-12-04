@@ -2,6 +2,12 @@
 
 Automate visual regression testing for your web applications. Compare feature branch changes against main branch baselines automatically.
 
+## Demo
+
+<div align="center">
+  <video src="images/visual-regression-testing-vscode-extension.mov" controls width="50%"></video>
+</div>
+
 ## Features
 
 - 🎯 **Automatic baseline comparison** - Captures main branch screenshots and compares with your feature branch
@@ -16,6 +22,8 @@ Automate visual regression testing for your web applications. Compare feature br
 
 1. Install from VS Code Marketplace or download the `.vsix` file
 2. Ensure Playwright is installed: `npm install -D @playwright/test && npx playwright install`
+
+📚 **New to this extension?** Check out the [Complete Getting Started Guide](GETTING-STARTED.md) for a step-by-step tutorial.
 
 ## Quick Start
 
@@ -76,6 +84,10 @@ Or use the status bar:
 1. Click the "Visual Tests" item in the status bar (bottom left)
 2. Select "Run Test" or "Show Report" from the menu
 
+<img src="images/status-bar.png" alt="Status Bar" width="400">
+
+<img src="images/status-bar-quicklink.png" alt="Status Bar Quick Menu" width="400">
+
 ## How It Works
 
 1. Clears existing snapshots
@@ -130,6 +142,8 @@ export function middleware(request: NextRequest) {
 
 ### Test file not found
 Create \`tests/visual/pages.spec.ts\` with the template above.
+
+<img src="images/missing-test-file.png" alt="Missing Test File Error" width="500">
 
 ### Playwright not installed
 ```bash

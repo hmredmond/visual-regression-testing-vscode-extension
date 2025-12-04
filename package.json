@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/hmredmond/visual-regression-testing-extension"
+    "url": "https://github.com/hmredmond/visual-regression-testing-vscode-extension"
   },
   "bugs": {
-    "url": "https://github.com/hmredmond/visual-regression-testing-extension/issues"
+    "url": "https://github.com/hmredmond/visual-regression-testing-vscode-extension/issues"
   },
-  "homepage": "https://github.com/hmredmond/visual-regression-testing-extension#readme",
+  "homepage": "https://github.com/hmredmond/visual-regression-testing-vscode-extension#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
