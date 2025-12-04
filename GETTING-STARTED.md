@@ -1,13 +1,18 @@
 # Getting Started with Visual Regression Testing Extension
 
+This tutorial walks you through testing the extension by making a visual change and catching it with visual regression testing.
+
 ## Installation
 
-1. Download the `visual-regression-testing-with-playwright-1.0.0.vsix` file
-2. Open VS Code
-3. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-4. Type "Install from VSIX" and select **Extensions: Install from VSIX...**
-5. Select the downloaded `.vsix` file
-6. Click "Reload" when prompted to activate the extension
+1. Install the `visual-regression-testing-with-playwright.vsix` file from [Marketplace](https://marketplace.visualstudio.com/items?itemName=HannahRedmond.visual-regression-testing-with-playwright)
+
+Or
+
+2. Install directly in VS Code:
+  - Open VS Code
+  - Press `Cmd+Shift+X` (Mac) or `Ctrl+Shift+X` (Windows/Linux) to open Extensions view
+  - Search for "Visual Regression Testing with Playwright"
+  - Click **Install**
 
 ## First-Time Setup
 
@@ -19,94 +24,6 @@ When you first open VS Code after installation, you'll see a tip notification:
 
 **Click "Open Settings"** and uncheck the option to hide the test results UI in the bottom left corner.
 
-### 2. Configure Extension Settings
-
-Open your workspace settings file (`.vscode/settings.json`):
-
-1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-2. Type "Preferences: Open Workspace Settings (JSON)"
-3. Add the following configuration:
-
-```json
-{
-  "visualRegression.testPath": "tests/visual/pages.spec.ts",
-  "visualRegression.serverStartCommand": "npm run dev",
-  "visualRegression.serverPort": 3000,
-  "visualRegression.serverStartupTime": 5000,
-  "visualRegression.mainBranch": "main",
-  "visualRegression.environmentVariables": {
-    "NEXT_PUBLIC_PLAYWRIGHT": "true"
-  },
-  "visualRegression.testImportPath": "../fixtures"
-}
-```
-
-**Configuration Explained:**
-
-- `testPath` - Location of your test file (we'll create this next)
-- `serverStartCommand` - Command to start your dev server
-- `serverPort` - Port your dev server runs on
-- `serverStartupTime` - How long to wait for server to start (in milliseconds)
-- `mainBranch` - Your main/master branch name
-- `environmentVariables` - Custom environment variables passed to your server and tests
-  - `NEXT_PUBLIC_PLAYWRIGHT: "true"` - Tells your app to bypass authentication in tests
-- `testImportPath` - Path to your test fixtures (use `"../fixtures"` if you have custom fixtures, or `"@playwright/test"` for default Playwright)
-
-### 3. Create Test File
-
-Create a test file at `tests/visual/pages.spec.ts`:
-
-```bash
-mkdir -p tests/visual
-```
-
-Then create `tests/visual/pages.spec.ts` with this content:
-
-```typescript
-import { expect, test } from "../fixtures";
-
-test("visual test for homepage", async ({ page }) => {
-  const testUrl = process.env.TEST_URL || "http://localhost:3000/";
-
-  // Authentication bypass is handled via environment variables
-  // configured in VS Code settings (e.g., NEXT_PUBLIC_PLAYWRIGHT=true)
-
-  await page.goto(testUrl);
-
-  // Wait for the page to be fully loaded
-  await page.waitForLoadState("networkidle");
-
-  await expect(page).toHaveScreenshot("homepage.png", { fullPage: true });
-});
-```
-
-**Or use the provided script:**
-
-```bash
-./create-test-file.sh tests/visual "../fixtures"
-```
-
-### 4. Ensure Your Middleware Checks the Environment Variable
-
-In your Next.js middleware or authentication handler:
-
-```typescript
-// middleware.ts
-export function middleware(request: NextRequest) {
-  // Bypass auth in Playwright tests
-  if (process.env.NEXT_PUBLIC_PLAYWRIGHT === 'true') {
-    return NextResponse.next();
-  }
-  
-  // Normal authentication flow
-  // ...
-}
-```
-
-## Complete Workflow Tutorial
-
-This tutorial walks you through testing the extension by making a visual change and catching it with visual regression testing.
-
 ### Prerequisites Check
 
 Before starting, ensure you have:
@@ -114,7 +31,6 @@ Before starting, ensure you have:
 - ✅ Node.js and npm installed
 - ✅ Playwright installed: `npm install -D @playwright/test && npx playwright install`
 - ✅ A working dev server command (e.g., `npm run dev`)
-- ✅ Test file created at `tests/visual/pages.spec.ts` (see step 3 above)
 
 ### Step 1: Configure User Settings
 
@@ -150,30 +66,7 @@ This creates a new branch for testing visual changes.
 
 ### Step 3: Make a Visual Change
 
-Make a small visible change to a page in your application. For example:
-
-**Option A: Change button text**
-```typescript
-// src/components/Button.tsx
-<button>Click Me Now!</button>  // Changed from "Click Me"
-```
-
-**Option B: Change heading color**
-```css
-/* styles/globals.css */
-h1 {
-  color: #ff0000;  /* Changed to red */
-}
-```
-
-**Option C: Add a badge or label**
-```tsx
-// src/pages/index.tsx
-<div>
-  <h1>Welcome</h1>
-  <span className="badge">NEW</span>  {/* Added badge */}
-</div>
-```
+Make a small visible change to a page in your application.
 
 Choose any visible change that will be easy to spot in the test report.
 

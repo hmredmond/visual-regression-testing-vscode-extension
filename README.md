@@ -8,6 +8,8 @@ Automate visual regression testing for your web applications. Compare feature br
   <video src="images/visual-regression-testing-vscode-extension.mp4" controls width="50%"></video>
 </div>
 
+[images/visual-regression-testing-vscode-extension.mp4](images/visual-regression-testing-vscode-extension.mp4)
+
 ## Features
 
 - 🎯 **Automatic baseline comparison** - Captures main branch screenshots and compares with your feature branch
@@ -64,10 +66,12 @@ Add to `.vscode/settings.json`:
 
 ```json
 {
-  "visualRegression.testPath": "tests/visual/pages.spec.ts",
+  "visualRegression.testPath": "tests/visual",
   "visualRegression.serverStartCommand": "npm run dev",
   "visualRegression.serverPort": 3000,
   "visualRegression.mainBranch": "main",
+  "visualRegression.testImportPath": "../path-to-custom-fixtures",
+  "visualRegression.waitForSelector": "selector-rule-to-show-page-has-loaded",
   "visualRegression.environmentVariables": {
     "NEXT_PUBLIC_PLAYWRIGHT": "true"
   }
