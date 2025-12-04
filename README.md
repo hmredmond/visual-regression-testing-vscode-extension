@@ -4,10 +4,8 @@ Automate visual regression testing for your web applications. Compare feature br
 
 ## Demo
 
-https://github.com/user-attachments/assets/visual-regression-testing-vscode-extension.mov
-
 <div align="center">
-  <video src="images/visual-regression-testing-vscode-extension.mov" controls width="50%"></video>
+  <video src="images/visual-regression-testing-vscode-extension.mp4" controls width="50%"></video>
 </div>
 
 ## Features
@@ -102,13 +100,14 @@ Or use the status bar:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| \`testPath\` | \`tests/visual/pages.spec.ts\` | Path to test file |
+| \`testPath\` | \`tests/visual\` | Path to Playwright test files |
 | \`mainBranch\` | \`main\` | Main branch name |
 | \`serverStartCommand\` | \`npm run dev\` | Command to start dev server |
 | \`serverPort\` | \`3000\` | Dev server port |
 | \`serverStartupTime\` | \`5000\` | Server startup wait time (ms) |
 | \`environmentVariables\` | \`{}\` | Custom environment variables |
 | \`testImportPath\` | \`@playwright/test\` | Import path for test fixtures |
+| \`waitForSelector\` | \`""\` | Optional CSS selector to wait for before taking screenshots |
 | \`showStatusBar\` | \`true\` | Show/hide status bar item |
 | \`notifyOnCompletion\` | \`true\` | Show notification when tests complete |
 | \`autoRunOnSave\` | \`false\` | Automatically run tests when files are saved |
@@ -207,6 +206,10 @@ The extension adds a "Visual Tests" item to the status bar for quick access. To 
 
 MIT
 
-## Support
+## Contributions
 
-[GitHub Issues](https://github.com/hmredmond/visual-regression-testing-vscode-extension/issues)
+Love this extension? [Star us](https://github.com/hmredmond/visual-regression-testing-vscode-extension) and [buy me a coffee](https://buymeacoffee.com/hannahredmond)
+
+Want to make this extension even more awesome? [Send us your wish](https://github.com/hmredmond/visual-regression-testing-vscode-extension/issues/new?labels=enhancement).
+
+Hate how it is working? [Raise an issue](https://github.com/hmredmond/visual-regression-testing-vscode-extension/issues/new?labels=bug).
