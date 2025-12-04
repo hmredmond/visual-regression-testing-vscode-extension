@@ -4,6 +4,8 @@ Automate visual regression testing for your web applications. Compare feature br
 
 ## Demo
 
+https://github.com/user-attachments/assets/visual-regression-testing-vscode-extension.mov
+
 <div align="center">
   <video src="images/visual-regression-testing-vscode-extension.mov" controls width="50%"></video>
 </div>

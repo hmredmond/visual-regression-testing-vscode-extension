@@ -2,7 +2,7 @@
   "name": "visual-regression-testing-with-playwright",
   "displayName": "Visual Regression Testing with Playwright",
   "description": "Automate Playwright visual regression testing with automatic main branch baseline comparison",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "publisher": "HannahRedmond",
   "icon": "images/avatar.png",
   "galleryBanner": {
