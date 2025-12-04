@@ -20,27 +20,45 @@ export class VisualRegressionController {
     private readonly context: vscode.ExtensionContext,
     private readonly workspaceFolder: vscode.WorkspaceFolder,
   ) {
-    // Create status bar item
+    // Create status bar item with menu
     this.statusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       100,
     );
-    this.statusBarItem.command = "visualRegression.showReport";
+    this.statusBarItem.command = "visualRegression.statusBarMenu";
     this.statusBarItem.text = "$(beaker) Visual Tests";
-    this.statusBarItem.tooltip = "Click to show test report";
+    this.statusBarItem.tooltip = "Visual Regression Testing";
 
-    const config = vscode.workspace.getConfiguration("visualRegression");
-    if (config.get("showStatusBar")) {
-      this.statusBarItem.show();
-    }
+    // Show status bar based on configuration
+    this.updateStatusBarVisibility();
 
     context.subscriptions.push(this.statusBarItem);
+
+    // Watch for configuration changes
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("visualRegression.showStatusBar")) {
+          this.updateStatusBarVisibility();
+        }
+      })
+    );
 
     // Create output channel
     this.outputChannel = vscode.window.createOutputChannel(
       "Visual Regression Tests",
     );
     context.subscriptions.push(this.outputChannel);
+  }
+
+  private updateStatusBarVisibility() {
+    const config = vscode.workspace.getConfiguration("visualRegression");
+    const showStatusBar = config.get<boolean>("showStatusBar", true);
+
+    if (showStatusBar) {
+      this.statusBarItem.show();
+    } else {
+      this.statusBarItem.hide();
+    }
   }
 
   updateStatusBar(
@@ -307,44 +325,47 @@ export class VisualRegressionController {
 
   async showReport() {
     try {
-      // Try to open the report
-      await execAsync("npx playwright show-report", {
-        cwd: this.workspaceFolder.uri.fsPath,
-      });
-    } catch (error) {
-      // Check if it's a port already in use error
-      const errorMessage = String(error);
-      if (errorMessage.includes("EADDRINUSE")) {
-        const action = await vscode.window.showWarningMessage(
-          "Playwright report server is already running on another port. Kill existing server and restart?",
-          "Kill & Restart",
-          "Open in Browser",
-          "Cancel",
+      // Check if report exists
+      const reportPath = `${this.workspaceFolder.uri.fsPath}/playwright-report/index.html`;
+      const fs = await import('node:fs');
+      
+      if (!fs.existsSync(reportPath)) {
+        vscode.window.showWarningMessage(
+          "No Playwright report found. Run tests first to generate a report.",
         );
+        return;
+      }
 
-        if (action === "Kill & Restart") {
-          try {
-            // Kill any existing playwright report servers
-            await execAsync("pkill -f 'playwright show-report' || true", {
-              cwd: this.workspaceFolder.uri.fsPath,
-            });
-            // Wait a moment for the port to be released
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            // Try again
-            await execAsync("npx playwright show-report", {
-              cwd: this.workspaceFolder.uri.fsPath,
-            });
-          } catch (retryError) {
-            vscode.window.showErrorMessage(
-              `Failed to restart Playwright report: ${retryError}`,
-            );
-          }
-        } else if (action === "Open in Browser") {
-          // Open the default port in browser
-          await vscode.env.openExternal(
-            vscode.Uri.parse("http://localhost:9323"),
-          );
-        }
+      // Start the report server in the background using spawn
+      const { spawn } = await import('node:child_process');
+      const child = spawn("npx", ["playwright", "show-report"], {
+        cwd: this.workspaceFolder.uri.fsPath,
+        detached: true,
+        stdio: 'ignore'
+      });
+      
+      // Unref so it doesn't keep the process alive
+      child.unref();
+
+      // Wait a bit for the server to start
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Open in browser
+      await vscode.env.openExternal(
+        vscode.Uri.parse("http://localhost:9323"),
+      );
+
+      vscode.window.showInformationMessage(
+        "Playwright report server started on http://localhost:9323",
+      );
+    } catch (error) {
+      const errorMessage = String(error);
+      
+      if (errorMessage.includes("EADDRINUSE")) {
+        // Server already running, just open the browser
+        await vscode.env.openExternal(
+          vscode.Uri.parse("http://localhost:9323"),
+        );
       } else {
         vscode.window.showErrorMessage(
           `Could not open Playwright report: ${error}`,

@@ -10,6 +10,7 @@ Automate visual regression testing for your web applications. Compare feature br
 - 📊 **HTML reports** - Side-by-side comparison of changes
 - 🌍 **Environment variables** - Pass custom variables for auth bypass and more
 - ⚡ **Multiple URL testing** - Test several routes in one run
+- 📍 **Status bar integration** - Quick access to tests and reports from the status bar (optional)
 
 ## Installation
 
@@ -71,6 +72,10 @@ Add to `.vscode/settings.json`:
 2. Type "Visual Regression: Run Test"
 3. Enter URL paths (comma-separated for multiple): \`/,/unauthorised,/access-denied\`
 
+Or use the status bar:
+1. Click the "Visual Tests" item in the status bar (bottom left)
+2. Select "Run Test" or "Show Report" from the menu
+
 ## How It Works
 
 1. Clears existing snapshots
@@ -90,6 +95,10 @@ Add to `.vscode/settings.json`:
 | \`serverStartupTime\` | \`5000\` | Server startup wait time (ms) |
 | \`environmentVariables\` | \`{}\` | Custom environment variables |
 | \`testImportPath\` | \`@playwright/test\` | Import path for test fixtures |
+| \`showStatusBar\` | \`true\` | Show/hide status bar item |
+| \`notifyOnCompletion\` | \`true\` | Show notification when tests complete |
+| \`autoRunOnSave\` | \`false\` | Automatically run tests when files are saved |
+| \`autoRunDelay\` | \`2000\` | Delay before auto-running tests (ms) |
 
 ### Environment Variables
 
@@ -154,6 +163,13 @@ VS Code notifications appear in the bottom right corner. If you missed them:
 1. Open Settings (\`Cmd+,\`)
 2. Search "Playwright"
 3. Uncheck "Playwright: Show Test Explorer"
+
+### Hide/Show Status Bar
+The extension adds a "Visual Tests" item to the status bar for quick access. To hide it:
+1. Open Settings (\`Cmd+,\`)
+2. Search "Visual Regression: Show Status Bar"
+3. Uncheck to hide, or check to show
+4. Changes apply immediately - no reload required
 
 ### View logs
 1. Open Output panel: \`View → Output\`

@@ -41,6 +41,27 @@ export function activate(context: vscode.ExtensionContext) {
   // Initialize controller
   controller = new VisualRegressionController(context, workspaceFolder);
 
+  // Register status bar menu command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "visualRegression.statusBarMenu",
+      async () => {
+        const options = [
+          { label: "$(play) Run Test", command: "visualRegression.runTest" },
+          { label: "$(graph) Show Report", command: "visualRegression.showReport" },
+        ];
+        
+        const selected = await vscode.window.showQuickPick(options, {
+          placeHolder: "Visual Regression Testing",
+        });
+        
+        if (selected) {
+          vscode.commands.executeCommand(selected.command);
+        }
+      }
+    )
+  );
+
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand(
