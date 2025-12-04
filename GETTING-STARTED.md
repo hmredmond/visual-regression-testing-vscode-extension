@@ -103,7 +103,145 @@ export function middleware(request: NextRequest) {
 }
 ```
 
-## Running Your First Test
+## Complete Workflow Tutorial
+
+This tutorial walks you through testing the extension by making a visual change and catching it with visual regression testing.
+
+### Prerequisites Check
+
+Before starting, ensure you have:
+- ✅ Git repository initialized (`git init` if needed)
+- ✅ Node.js and npm installed
+- ✅ Playwright installed: `npm install -D @playwright/test && npx playwright install`
+- ✅ A working dev server command (e.g., `npm run dev`)
+- ✅ Test file created at `tests/visual/pages.spec.ts` (see step 3 above)
+
+### Step 1: Configure User Settings
+
+Open your **User Settings** (not workspace settings):
+1. Press `Cmd+,` (Mac) or `Ctrl+,` (Windows/Linux)
+2. Click the **"Open Settings (JSON)"** icon in the top right
+3. Add your required configuration: e.g.
+
+```json
+{
+  "visualRegression.environmentVariables": {
+    "NEXT_PUBLIC_PLAYWRIGHT": "true"
+  },
+  "visualRegression.testImportPath": "../fixtures",
+  "visualRegression.waitForSelector": "[data-testid='loading-skeleton']"
+}
+```
+
+**What these settings do:**
+- `environmentVariables` - Bypasses authentication during tests
+- `testImportPath` - Uses custom test fixtures instead of default Playwright imports.
+- `waitForSelector` - Waits for the selector (in the example, loading skeletons to disappear) before taking screenshots
+
+### Step 2: Create a Test Branch
+
+Open the integrated terminal (`Ctrl+\`` or **Terminal → New Terminal**) and run:
+
+```bash
+git checkout -b visual-test-demo
+```
+
+This creates a new branch for testing visual changes.
+
+### Step 3: Make a Visual Change
+
+Make a small visible change to a page in your application. For example:
+
+**Option A: Change button text**
+```typescript
+// src/components/Button.tsx
+<button>Click Me Now!</button>  // Changed from "Click Me"
+```
+
+**Option B: Change heading color**
+```css
+/* styles/globals.css */
+h1 {
+  color: #ff0000;  /* Changed to red */
+}
+```
+
+**Option C: Add a badge or label**
+```tsx
+// src/pages/index.tsx
+<div>
+  <h1>Welcome</h1>
+  <span className="badge">NEW</span>  {/* Added badge */}
+</div>
+```
+
+Choose any visible change that will be easy to spot in the test report.
+
+### Step 4: Commit the Change
+
+Commit your visual change to the test branch:
+
+```bash
+git add .
+git commit -m "test: add visual change for regression testing demo"
+```
+
+### Step 5: Run Visual Test
+
+Now run the visual regression test to catch your change:
+
+**Option 1: Using Command Palette**
+1. Open Command Palette: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+2. Type: **"Visual Regression: Run Test"**
+3. Enter the URL path of the page you modified (e.g., `/` for homepage)
+
+**Option 2: Using Status Bar** ⭐ Recommended
+1. Look at the bottom left of VS Code
+2. Click the **"Visual Tests"** item in the status bar
+3. Select **"Run Test"** from the menu
+4. Enter the URL path of the page you modified
+
+### Step 6: Watch the Extension Work
+
+You'll see progress notifications as the extension:
+1. ✅ Validates your setup
+2. ✅ Switches to `main` branch
+3. ✅ Starts server and captures baseline screenshots
+4. ✅ Switches back to your `visual-test-demo` branch
+5. ✅ Starts server and captures new screenshots
+6. ✅ Compares screenshots and detects differences
+
+### Step 7: View the Report
+
+When the test completes, you'll see:
+> ⚠️ Visual regression tests failed - differences detected!
+
+**View the report:**
+
+**Option 1: Click notification**
+- Click **"Show Report"** in the notification
+
+**Option 2: Use status bar** ⭐ Recommended
+1. Click **"Visual Tests"** in the status bar (bottom left)
+2. Select **"Show Report"**
+
+The Playwright HTML report will open in your browser showing:
+- ✅ Side-by-side comparison of before/after screenshots
+- ✅ Highlighted differences in red
+- ✅ Exact pixel differences
+
+### Step 8: Clean Up (Optional)
+
+After testing, you can return to your original branch:
+
+```bash
+git checkout main
+git branch -D visual-test-demo
+```
+
+## Running Regular Tests
+
+After the tutorial, use the extension in your normal workflow:
 
 1. **Open Command Palette**: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
 2. **Type**: "Visual Regression: Run Test"
